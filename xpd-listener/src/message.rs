@@ -1,6 +1,5 @@
 use std::{collections::HashMap, time::Duration};
 
-use rand::Rng;
 use sqlx::query;
 use twilight_cache_inmemory::CacheableRole;
 use twilight_model::{
@@ -14,7 +13,7 @@ use twilight_model::{
 };
 use xpd_common::{id_to_db, RoleReward};
 
-const MESSAGE_COOLDOWN: Duration = Duration::from_secs(60);
+const MESSAGE_COOLDOWN: Duration = Duration::from_secs(3);
 
 use crate::{Error, XpdListenerInner};
 
@@ -45,7 +44,7 @@ impl XpdListenerInner {
 
         let guild_config = self.get_guild_config(guild_id).await?;
 
-        let xp_added: i64 = rand::thread_rng().gen_range(15..=25);
+        let xp_added = ((msg.content.chars().count() as f64) / 10.0).sqrt().round() as i64;
         let xp_record = query!(
             "INSERT INTO levels (id, xp, guild) VALUES ($1, $2, $3) \
                 ON CONFLICT (id, guild) \
