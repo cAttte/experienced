@@ -1,6 +1,6 @@
-ARG LLVMTARGETARCH
+ARG LLVMTARGETARCH=x86_64
 FROM --platform=${BUILDPLATFORM} ghcr.io/randomairborne/cross-cargo:${LLVMTARGETARCH} AS builder
-ARG LLVMTARGETARCH
+ARG LLVMTARGETARCH=x86_64
 
 WORKDIR /build
 
@@ -9,7 +9,7 @@ COPY . .
 RUN cargo build --release --target ${LLVMTARGETARCH}-unknown-linux-musl
 
 FROM alpine:latest
-ARG LLVMTARGETARCH
+ARG LLVMTARGETARCH=x86_64
 
 WORKDIR /experienced/
 
