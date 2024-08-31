@@ -44,7 +44,7 @@ impl XpdListenerInner {
 
         let guild_config = self.get_guild_config(guild_id).await?;
 
-        let xp_added = ((msg.content.chars().count() as f64) / 10.0).sqrt().round() as i64;
+        let xp_added = ((msg.content.chars().count() as f64) / 10.0).sqrt().ceil() as i64;
         let xp_record = query!(
             "INSERT INTO levels (id, xp, guild) VALUES ($1, $2, $3) \
                 ON CONFLICT (id, guild) \
