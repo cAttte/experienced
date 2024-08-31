@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use rand::Rng;
 use sqlx::query;
 use twilight_cache_inmemory::CacheableRole;
 use twilight_model::{
@@ -63,12 +62,9 @@ impl XpdListenerInner {
             return Ok(());
         }
 
-        let xp_added: i64 = if config_max_xp_per_msg == config_min_xp_per_msg {
-            config_max_xp_per_msg
-        } else {
-            rand::thread_rng().gen_range(config_min_xp_per_msg..=config_max_xp_per_msg)
-        }
-        .into();
+        let guild_config = self.get_guild_config(guild_id).await?;
+
+        let xp_added = ((msg.content.chars().count() as f64) / 10.0).sqrt().ceil() as i64;
         let xp_record = query!(
             "INSERT INTO levels (id, xp, guild) VALUES ($1, $2, $3) \
                 ON CONFLICT (id, guild) \

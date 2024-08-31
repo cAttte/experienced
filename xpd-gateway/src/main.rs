@@ -30,8 +30,8 @@ use xpd_slash::{InvalidateCache, UpdateChannels, XpdSlash};
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
-        .json()
+        .with_max_level(Level::INFO)
+        .compact()
         .init();
     let token = xpd_common::get_var("DISCORD_TOKEN");
     let pg = xpd_common::get_var("DATABASE_URL");

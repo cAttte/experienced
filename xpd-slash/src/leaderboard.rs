@@ -78,11 +78,17 @@ async fn gen_leaderboard(
     // It's designed to only allocate once, at the start here
     let mut description = String::with_capacity(users.len() * 128);
     for (i, user) in users.iter().enumerate() {
-        let level = mee6::LevelInfo::new(user.xp.try_into().unwrap_or(0)).level();
+        let xp = user.xp.try_into().unwrap_or(0);
+        let level = mee6::LevelInfo::new(xp).level();
         let rank: i64 = i
             .try_into()
             .map_or(-1, |v: i64| v + (zpage * USERS_PER_PAGE) + 1);
-        writeln!(description, "**#{rank}.** <@{}> - Level {level}", user.id).ok();
+        writeln!(
+            description,
+            "{rank}. <@{}> \u{2013} Level {level} ({xp} xp)",
+            user.id
+        )
+        .ok();
     }
     if description.is_empty() {
         description += "Nobody is ranked yet.";
