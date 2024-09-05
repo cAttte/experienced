@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use sqlx::query;
 use twilight_cache_inmemory::CacheableRole;
@@ -11,9 +11,7 @@ use twilight_model::{
         Id,
     },
 };
-use xpd_common::{id_to_db, RoleReward};
-
-const MESSAGE_COOLDOWN: Duration = Duration::from_secs(3);
+use xpd_common::{id_to_db, snowflake_to_timestamp, RoleReward, DEFAULT_MESSAGE_COOLDOWN};
 
 use crate::{Error, XpdListenerInner};
 
@@ -36,9 +34,22 @@ impl XpdListenerInner {
         }
 
         let user_cooldown_key = (guild_id, msg.author.id);
+        let this_message_sts = snowflake_to_timestamp(msg.id);
 
-        // contains will only be true if the message also has not expired
-        if self.messages.read()?.contains(&user_cooldown_key) {
+        let guild_config = self.get_guild_config(guild_id).await?;
+
+        // if the last message timestamp plus the cooldown period is larger than the current sent at epoch,
+        // we want to return immediately because the "expiry time" is still in the future
+        let cooldown: i64 = guild_config
+            .cooldown
+            .unwrap_or(DEFAULT_MESSAGE_COOLDOWN)
+            .into();
+        if self
+            .messages
+            .read()?
+            .get(&user_cooldown_key)
+            .is_some_and(|last_message_sts| last_message_sts + cooldown > this_message_sts)
+        {
             return Ok(());
         }
 
@@ -62,7 +73,7 @@ impl XpdListenerInner {
 
         self.messages
             .write()?
-            .insert(user_cooldown_key, MESSAGE_COOLDOWN);
+            .insert(user_cooldown_key, this_message_sts);
 
         let level_info = mee6::LevelInfo::new(xp);
         let old_level_info = mee6::LevelInfo::new(old_xp);
@@ -75,8 +86,8 @@ impl XpdListenerInner {
             "Got & sorted rewards for guild"
         );
 
-        let user_level: i64 = level_info.level().try_into().unwrap_or(0);
-        let old_user_level: i64 = old_level_info.level().try_into().unwrap_or(0);
+        let user_level: i64 = level_info.level().try_into().unwrap_or(-1);
+        let old_user_level: i64 = old_level_info.level().try_into().unwrap_or(-1);
 
         let mut reward_idx = None;
         for (idx, data) in rewards.iter().enumerate() {

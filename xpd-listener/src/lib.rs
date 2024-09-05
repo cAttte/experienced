@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use expiringmap::ExpiringSet;
+use ahash::AHashMap;
 use sqlx::{query, query_as, PgPool};
 use twilight_cache_inmemory::{InMemoryCache, ResourceType};
 use twilight_gateway::EventTypeFlags;
@@ -22,7 +22,11 @@ mod message;
 #[macro_use]
 extern crate tracing;
 
-type SentMessages = ExpiringSet<(Id<GuildMarker>, Id<UserMarker>)>;
+// TODO: Maybe we can improve the locking on this. Have one task per guild or something.
+// Go philosophy is good, we want to share memory by communicating.
+// We use i64 here, because it makes some database stuff easier and
+// it's impossible for a discord snowflake timestamp to exceed i64
+type SentMessages = AHashMap<(Id<GuildMarker>, Id<UserMarker>), i64>;
 type LockingMap<K, V> = RwLock<HashMap<K, V>>;
 
 #[derive(Clone)]
@@ -110,7 +114,8 @@ impl XpdListenerInner {
         }
         let config = query_as!(
             RawGuildConfig,
-            "SELECT one_at_a_time, level_up_message, level_up_channel, ping_on_level_up \
+            "SELECT one_at_a_time, level_up_message, level_up_channel, ping_on_level_up,\
+             max_xp_per_message, min_xp_per_message, message_cooldown \
              FROM guild_configs WHERE id = $1",
             id_to_db(guild)
         )
