@@ -10,3 +10,6 @@ members = [
 ]
 resolver = "2"
 default-members = ["xpd-gateway"]
+
+[profile.dev]
+debug = 1
