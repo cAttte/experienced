@@ -5,7 +5,6 @@
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation
 )]
-#![no_std]
 //! A library to calculate mee6 levels.
 //! This can be calculated using the `LevelInfo` struct.
 
@@ -23,7 +22,6 @@ impl LevelInfo {
     /// immediately, rather then when the getter is called.
     #[must_use]
     pub fn new(xp: u64) -> Self {
-        // The operation used to calculate how many XP a given level is is (5 / 6) * level * (2 * level * level + 27 * level + 91), but it's optimized here.
         let level = {
             let mut testxp = 0;
             let mut level = 0;
@@ -70,8 +68,20 @@ impl LevelInfo {
 #[inline]
 #[must_use]
 pub fn xp_needed_for_level(level: u64) -> u64 {
-    let level = level as f64;
-    ((5.0 / 6.0) * level * (2.0 * level * level + 27.0 * level + 91.0)) as u64
+    // "secret level" feature (artificial xp wall)
+    if level > 30 {
+        return xp_needed_for_level(30) * (level - 29);
+    }
+
+    let base_xp = 6_f64 + (level as f64).powf(3.1155);
+    nice_round(base_xp) as u64
+}
+
+#[inline]
+#[must_use]
+fn nice_round(num: f64) -> f64 {
+    let multiple = (10_f64).powf((num.log10() / 2.0).floor());
+    (num / multiple).round() * multiple
 }
 
 #[cfg(test)]
