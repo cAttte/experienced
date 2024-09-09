@@ -23,21 +23,18 @@ fn empty_response<T: std::fmt::Debug>(error: T) -> InteractionResponse {
     }
 }
 
-pub async fn autocomplete(state: SlashState, data: CommandData) -> InteractionResponse {
-    autocomplete_inner(state, data)
-        .await
-        .unwrap_or_else(empty_response)
+pub fn autocomplete(state: &SlashState, data: CommandData) -> InteractionResponse {
+    autocomplete_inner(state, data).unwrap_or_else(empty_response)
 }
 
-#[allow(clippy::unused_async)]
-pub async fn autocomplete_inner(
-    state: SlashState,
+pub fn autocomplete_inner(
+    state: &SlashState,
     data: CommandData,
 ) -> Result<InteractionResponse, Error> {
     debug!(options = ?data, "Got autocomplete");
     let choices = match data.name.as_str() {
-        "card" => card_autocomplete(data, &state)?.into_iter(),
-        "guild-card" => card_autocomplete(data, &state)?.into_iter(),
+        "card" => card_autocomplete(data, state)?.into_iter(),
+        "guild-card" => card_autocomplete(data, state)?.into_iter(),
         _ => return Err(Error::NoAutocompleteForCommand),
     };
 

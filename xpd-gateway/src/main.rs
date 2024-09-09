@@ -9,7 +9,7 @@ use std::sync::{
 };
 
 use sqlx::PgPool;
-use tokio::task::JoinSet;
+use tokio_util::task::TaskTracker;
 use tracing::Level;
 use twilight_gateway::{
     error::ReceiveMessageErrorType, CloseFrame, Config, Event, EventTypeFlags, Intents,
@@ -71,10 +71,12 @@ async fn main() {
         .build()
         .unwrap();
 
+    let task_tracker = TaskTracker::new();
+
     let (config_tx, mut config_rx) = tokio::sync::mpsc::channel(10);
     let (rewards_tx, mut rewards_rx) = tokio::sync::mpsc::channel(10);
 
-    let listener = XpdListener::new(db.clone(), client.clone(), my_id);
+    let listener = XpdListener::new(db.clone(), client.clone(), task_tracker.clone(), my_id);
 
     let updating_listener = listener.clone();
     let config_update = tokio::spawn(async move {
@@ -107,6 +109,7 @@ async fn main() {
         client.clone(),
         my_id,
         db.clone(),
+        task_tracker.clone(),
         control_guild,
         owners,
         update_channels,
@@ -122,12 +125,12 @@ async fn main() {
     info!("Connecting to discord");
 
     let shutdown = Arc::new(AtomicBool::new(false));
-    let mut set = JoinSet::new();
     for shard in shards {
         let client = client.clone();
-        set.spawn(event_loop(
+        task_tracker.clone().spawn(event_loop(
             shard,
             client,
+            task_tracker.clone(),
             shutdown.clone(),
             listener.clone(),
             slash.clone(),
@@ -147,9 +150,10 @@ async fn main() {
         sender.close(CloseFrame::NORMAL).ok();
     }
 
-    debug!("Waiting for shards to close");
+    debug!("Waiting for background tasks to complete");
     // Await all tasks to complete.
-    while set.join_next().await.is_some() {}
+    task_tracker.close();
+    task_tracker.wait().await;
 
     drop(slash); // Must be dropped before awaiting config shutdown, to allow the recv loop to end
     debug!("Waiting for listener updater to close");
@@ -166,6 +170,7 @@ async fn main() {
 async fn event_loop(
     mut shard: Shard,
     http: Arc<DiscordClient>,
+    task_tracker: TaskTracker,
     shutdown: Arc<AtomicBool>,
     listener: XpdListener,
     slash: XpdSlash,
@@ -197,7 +202,7 @@ async fn event_loop(
         let http = http.clone();
         let slash = slash.clone();
         let db = db.clone();
-        tokio::spawn(async move {
+        task_tracker.spawn(async move {
             if let Err(error) = handle_event(event, http, listener, slash, db).await {
                 // this includes even user caused errors. User beware. Don't set up automatic emails or anything.
                 error!(?error, "Handler error");

@@ -51,17 +51,14 @@ async fn process_experience(
     state: SlashState,
 ) -> Result<String, Error> {
     match data {
-        XpCommandExperience::Import(import) => {
-            import_level_data(
-                state,
-                respondable,
-                guild_id,
-                import.levels,
-                import.overwrite.unwrap_or(false),
-            )
-            .await
-        }
-        XpCommandExperience::Export(_) => export_level_data(state, respondable, guild_id).await,
+        XpCommandExperience::Import(import) => import_level_data(
+            state,
+            respondable,
+            guild_id,
+            import.levels,
+            import.overwrite.unwrap_or(false),
+        ),
+        XpCommandExperience::Export(_) => export_level_data(state, respondable, guild_id),
         XpCommandExperience::Add(add) => {
             modify_user_xp(guild_id, add.user, add.amount, state).await
         }
@@ -84,7 +81,7 @@ async fn modify_user_xp(
 ) -> Result<String, Error> {
     let mut txn = state.db.begin().await?;
     let xp = query!(
-        "INSERT INTO levels (id, xp, guild) VALUES ($1, $2, $3) \
+        "INSERT INTO levels (id, guild, xp) VALUES ($1, $2, $3) \
          ON CONFLICT (id, guild) DO UPDATE SET xp = excluded.xp + $3 \
          RETURNING xp",
         id_to_db(user_id),
@@ -154,19 +151,22 @@ pub struct ImportUser {
     xp: i64,
 }
 
-#[allow(clippy::unused_async)]
-async fn export_level_data(
+#[allow(clippy::unnecessary_wraps)]
+fn export_level_data(
     state: SlashState,
     respondable: Respondable,
     guild_id: Id<GuildMarker>,
 ) -> Result<String, Error> {
-    tokio::spawn(background_data_operation_wrapper(
-        state,
-        respondable,
-        guild_id,
-        None,
-        false,
-    ));
+    state
+        .task_tracker
+        .clone()
+        .spawn(background_data_operation_wrapper(
+            state,
+            respondable,
+            guild_id,
+            None,
+            false,
+        ));
     Ok("Exporting level data, check back soon!".to_string())
 }
 
@@ -193,15 +193,15 @@ async fn background_data_export(
         .attachments([attachment]))
 }
 
-#[allow(clippy::unused_async)]
-async fn import_level_data(
+#[allow(clippy::unnecessary_wraps)]
+fn import_level_data(
     state: SlashState,
     respondable: Respondable,
     guild_id: Id<GuildMarker>,
     attachment: Attachment,
     overwrite: bool,
 ) -> Result<String, Error> {
-    tokio::spawn(background_data_operation_wrapper(
+    state.clone().spawn(background_data_operation_wrapper(
         state,
         respondable,
         guild_id,

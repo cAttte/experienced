@@ -224,13 +224,12 @@ pub fn sort_rewards(a: &RoleReward, b: &RoleReward) -> std::cmp::Ordering {
     a.requirement.cmp(&b.requirement)
 }
 
-// TODO: Have this show the value when unset as well.
 #[inline]
-const fn tribool(data: Option<bool>) -> &'static str {
-    match data {
-        None => "unset",
-        Some(true) => "true",
-        Some(false) => "false",
+const fn tribool(data: Option<bool>, default: Option<bool>) -> &'static str {
+    match (data, default) {
+        (None, None) => "unset",
+        (Some(true), _) | (None, Some(true)) => "true",
+        (Some(false), _) | (None, Some(false)) => "false",
     }
 }
 
@@ -256,7 +255,7 @@ impl Display for GuildConfig {
         writeln!(
             f,
             "One reward role at a time: {}",
-            tribool(self.one_at_a_time)
+            tribool(self.one_at_a_time, Some(false))
         )?;
         writeln!(
             f,
