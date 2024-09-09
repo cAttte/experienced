@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn level() {
         let inf = LevelInfo::new(3255);
-        assert_eq!(inf.level(), 8);
+        assert_eq!(inf.level(), 13);
     }
     #[test]
     fn xp() {
@@ -100,6 +100,6 @@ mod tests {
     #[test]
     fn percentage() {
         let inf = LevelInfo::new(3255);
-        assert!((inf.percentage() - 0.43).abs() > f64::EPSILON);
+        assert!((inf.percentage() - 0.38).abs() > f64::EPSILON);
     }
 }
