@@ -22,4 +22,4 @@ thiserror = "1"
 tracing = "0.1"
 ahash = "0.8"
 rand = "0.8"
-mee6 = "0.1"
+mee6 = { path = "../mee6" }

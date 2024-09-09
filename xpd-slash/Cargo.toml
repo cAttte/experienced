@@ -30,7 +30,7 @@ serde_json = "1"
 tracing = "0.1"
 base64 = "0.22"
 thiserror = "1"
-mee6 = "0.1"
+mee6 = { path = "../mee6" }
 csv = "1"
 
 
